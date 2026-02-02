@@ -1,0 +1,491 @@
+// ============================================================================
+// ARCHITECTS MARKETPLACE - MINIMAL DATABASE SCHEMA
+// Phase 1: Foundation - Supporting Current Frontend Only
+// ============================================================================
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+/// User role enum
+enum UserRole {
+  BUYER
+  ARCHITECT
+  ADMIN
+}
+
+/// Design status enum
+enum DesignStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+/// File type enum for design files
+enum FileType {
+  PREVIEW_IMAGE
+  DESIGN_ARCHIVE
+  CAD_FILE
+  BIM_FILE
+  DOCUMENT
+  OTHER
+}
+
+/// Payment status enum for transactions
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
+/// License status enum
+enum LicenseStatus {
+  ACTIVE
+  REVOKED
+}
+
+/// Architect earning status enum
+enum ArchitectEarningStatus {
+  PENDING
+  PAYABLE
+  PAID
+}
+
+/// Stripe account status enum
+enum StripeAccountStatus {
+  PENDING
+  VERIFIED
+  RESTRICTED
+}
+
+/// Modification status enum
+enum ModificationStatus {
+  REQUESTED
+  PRICED
+  ACCEPTED
+  PAID
+  IN_PROGRESS
+  DELIVERED
+  COMPLETED
+  DECLINED
+}
+
+/// License type enum
+enum LicenseType {
+  STANDARD
+  EXCLUSIVE
+}
+
+/// Account type enum
+enum AccountType {
+  INDIVIDUAL
+  COMPANY
+}
+
+/// Payout schedule enum
+enum PayoutSchedule {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+// ============================================================================
+// MODELS
+// ============================================================================
+
+/// User - Base authentication and profile
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole
+  phone     String?
+  timezone  String   @default("UTC")
+  preferredLanguage String @default("en")
+  profilePhotoUrl   String?
+  country   String?
+  city      String?
+  createdAt DateTime @default(now())
+
+  // Relationships
+  buyer     Buyer?
+  architect Architect?
+
+  buyerModifications     ModificationRequest[] @relation("BuyerModifications")
+  architectModifications ModificationRequest[] @relation("ArchitectModifications")
+  sentMessages           Message[]
+  auditLogs              AuditLog[]
+
+  @@index([email])
+}
+
+/// Buyer - Design purchaser profile
+model Buyer {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+
+  // Relationships
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchases    Purchase[]
+  transactions Transaction[]
+  licenses     License[]
+  contactUnlockEvents ContactUnlockEvent[]
+  favorites    Design[]      @relation("BuyerFavorites")
+  conversations Conversation[]
+}
+
+/// Architect - Design seller profile
+model Architect {
+  id                   String              @id @default(uuid())
+  userId               String              @unique
+  displayName          String
+  professionalTitle    String?
+  company              String?
+  bio                  String?
+  stripeAccountId      String?
+  stripeAccountStatus  StripeAccountStatus?
+  payoutsEnabled       Boolean             @default(false)
+
+  // Business & Legal
+  accountType              AccountType?
+  legalName                String?
+  businessRegistrationNumber String?
+  taxCountry               String?
+  vatTaxId                 String?
+  currencyPreference       String           @default("USD")
+
+  // Payments & Payouts
+  payoutCurrency           String           @default("USD")
+  payoutSchedule           PayoutSchedule   @default(WEEKLY)
+
+  // Licensing & Rights
+  defaultLicenseType       LicenseType      @default(STANDARD)
+  allowPaidModifications   Boolean          @default(true)
+  modificationPricingStrategy String?
+  copyrightDisplayName     String?
+
+  // Security
+  twoFactorEnabled         Boolean          @default(false)
+
+  // Privacy
+  publicProfileVisibility  Boolean          @default(true)
+  companyVisibility        Boolean          @default(true)
+  searchEngineIndexing     Boolean          @default(true)
+  dataExportRequested      Boolean          @default(false)
+  accountDeletionRequested Boolean          @default(false)
+
+  // Notification Preferences
+  emailNotifications       Json             @default("{}")
+
+  createdAt DateTime @default(now())
+
+  // Relationships
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  designs  Design[]
+  files    DesignFile[]
+  earnings ArchitectEarning[]
+  contactUnlockEvents ContactUnlockEvent[]
+  payoutBanks PayoutBank[]
+  conversations Conversation[]
+}
+
+/// Design - Architectural design for sale
+model Design {
+  id             String       @id @default(uuid())
+  slug           String?      @unique
+  architectId    String
+  title          String
+  description    String
+  category       String
+  price          Decimal      @db.Decimal(10, 2)
+  previewImageUrl String?
+  status         DesignStatus @default(DRAFT)
+  rejectionReason String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relationships
+  architect    Architect     @relation(fields: [architectId], references: [id], onDelete: Cascade)
+  purchases    Purchase[]
+  files        DesignFile[]
+  transactions Transaction[]
+  licenses     License[]
+  modificationRequests ModificationRequest[]
+  contactUnlockEvents ContactUnlockEvent[]
+  favoritedBy  Buyer[]       @relation("BuyerFavorites")
+
+  // Indexes for performance
+  @@index([architectId])
+  @@index([status])
+  @@index([category])
+  @@index([price])
+  @@index([createdAt])
+  @@index([title])
+  @@index([description])
+  @@index([slug])
+  // Full-text search index for title and description
+  @@index([title, description])
+}
+
+/// Purchase - Design purchase transaction
+model Purchase {
+  id        String   @id @default(uuid())
+  buyerId   String
+  designId  String
+  price     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  // Relationships
+  buyer  Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  design Design @relation(fields: [designId], references: [id], onDelete: Restrict)
+
+  @@index([buyerId])
+  @@index([designId])
+}
+
+/// DesignFile - Metadata for design-related files stored in S3
+model DesignFile {
+  id                    String   @id @default(uuid())
+  designId              String
+  uploadedByArchitectId String
+  fileType              FileType
+  originalFileName      String
+  storageKey            String   @unique
+  fileSize              Int
+  mimeType              String
+  isPublicPreview       Boolean  @default(false)
+  createdAt             DateTime @default(now())
+
+  // Relationships
+  design    Design    @relation(fields: [designId], references: [id], onDelete: Cascade)
+  architect Architect @relation(fields: [uploadedByArchitectId], references: [id], onDelete: Cascade)
+
+  @@index([designId])
+  @@index([uploadedByArchitectId])
+  @@index([fileType])
+}
+
+/// Transaction - Payment transaction records
+model Transaction {
+  id                    String        @id @default(uuid())
+  buyerId               String
+  designId              String?
+  modificationId        String?
+  stripeSessionId       String        @unique
+  stripePaymentIntentId String?
+  amountTotal           Int // Total amount in cents
+  platformFee           Int // Platform fee in cents (10%)
+  architectEarning      Int // Architect earning in cents (90%)
+  currency              String        @default("USD")
+  status                PaymentStatus @default(PENDING)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Relationships
+  buyer   Buyer             @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  design  Design?           @relation(fields: [designId], references: [id], onDelete: Restrict)
+  modification ModificationRequest? @relation(fields: [modificationId], references: [id], onDelete: Restrict)
+  license License?
+  earning ArchitectEarning?
+
+  @@index([buyerId])
+  @@index([designId])
+  @@index([modificationId])
+  @@index([status])
+}
+
+/// License - Access rights for purchased designs
+model License {
+  id            String        @id @default(uuid())
+  buyerId       String
+  designId      String
+  transactionId String        @unique
+  licenseType   LicenseType   @default(STANDARD)
+  status        LicenseStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+
+  // Relationships
+  buyer       Buyer       @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  design      Design      @relation(fields: [designId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([buyerId])
+  @@index([designId])
+  @@index([status])
+}
+
+/// ArchitectEarning - Earnings tracking for architects
+model ArchitectEarning {
+  id            String                 @id @default(uuid())
+  architectId   String
+  transactionId String                 @unique
+  amount        Int // Amount in cents
+  currency      String                 @default("USD")
+  status        ArchitectEarningStatus @default(PAYABLE)
+  createdAt     DateTime               @default(now())
+  paidAt        DateTime?
+
+  // Relationships
+  architect   Architect   @relation(fields: [architectId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([architectId])
+  @@index([status])
+}
+
+/// ModificationRequest - Paid modification requests
+model ModificationRequest {
+  id                String              @id @default(cuid())
+
+  designId          String
+  design            Design              @relation(fields: [designId], references: [id], onDelete: Cascade)
+
+  buyerId           String
+  buyer             User                @relation("BuyerModifications", fields: [buyerId], references: [id])
+
+  architectId       String
+  architect         User                @relation("ArchitectModifications", fields: [architectId], references: [id])
+
+  licenseType       LicenseType
+
+  description       String
+  scopeTags         String[]             // layout, facade, structure, etc.
+
+  proposedPrice     Int?                 // set by architect (in cents)
+  currency          String               @default("USD")
+
+  deliveryTimeDays  Int?
+  revisionsIncluded Int?
+
+  status            ModificationStatus   @default(REQUESTED)
+
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  // Relations
+  transactions      Transaction[]
+
+  @@index([designId])
+  @@index([buyerId])
+  @@index([architectId])
+  @@index([status])
+}
+
+model ContactUnlockEvent {
+  id           String   @id @default(cuid())
+
+  designId     String
+  buyerId      String
+  architectId  String
+
+  reason       String   // "EXCLUSIVE_PURCHASE"
+  unlockedAt   DateTime @default(now())
+
+  // Relations
+  design     Design     @relation(fields: [designId], references: [id], onDelete: Cascade)
+  buyer      Buyer      @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  architect  Architect  @relation(fields: [architectId], references: [id], onDelete: Cascade)
+
+  @@index([designId])
+  @@index([buyerId])
+  @@index([architectId])
+}
+
+/// PayoutBank - Bank account information for architect payouts
+model PayoutBank {
+  id             String   @id @default(uuid())
+  architectId    String
+  accountHolder  String
+  iban           String?
+  routingNumber  String?
+  accountNumber  String?
+  country        String
+  currency       String   @default("USD")
+  verified       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relationships
+  architect Architect @relation(fields: [architectId], references: [id], onDelete: Cascade)
+
+  @@index([architectId])
+  @@index([verified])
+}
+
+/// Conversation - Controlled messaging between buyers and architects
+model Conversation {
+  id        String   @id @default(uuid())
+  buyerId   String
+  architectId String
+  reason    ConversationReason
+  relatedId String?  // licenseId or modificationId
+  createdAt DateTime @default(now())
+
+  // Relationships
+  buyer   Buyer   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  architect Architect @relation(fields: [architectId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([buyerId])
+  @@index([architectId])
+  @@unique([buyerId, architectId, reason, relatedId])
+}
+
+/// Message - Individual messages in conversations
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime @default(now())
+
+  // Relationships
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+/// Conversation reason enum
+enum ConversationReason {
+  EXCLUSIVE_LICENSE
+  PAID_MODIFICATION
+  ADMIN
+}
+
+/// Audit log for admin actions
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String   // Admin user who performed the action
+  action     String   // Action performed (e.g., "APPROVE_DESIGN", "REJECT_DESIGN", "PUBLISH_DESIGN")
+  entityType String   // Type of entity affected (e.g., "DESIGN", "USER", "LICENSE")
+  entityId   String   // ID of the affected entity
+  metadata   Json?    // Additional data (e.g., rejection reason, old/new values)
+  createdAt  DateTime @default(now())
+
+  // Relationships
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+}
+

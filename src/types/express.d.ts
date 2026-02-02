@@ -1,0 +1,1 @@
+// This file is now empty - types moved to middleware/auth.d.ts
