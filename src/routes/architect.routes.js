@@ -804,6 +804,88 @@ router.get('/payouts', async (req, res) => {
 });
 
 /**
+ * GET /architect/earnings
+ * Get architect's real earnings from purchases (STEP 2.1)
+ * 
+ * Returns:
+ * - totalEarnings: Sum of all purchases for architect's designs
+ * - totalSales: Count of purchases
+ * - purchases: List of purchase records with design info
+ */
+router.get('/earnings', async (req, res) => {
+  try {
+    const architectId = req.user.id;
+
+    // Fetch all purchases for this architect's designs
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        design: {
+          architectId: architectId,
+        },
+      },
+      select: {
+        id: true,
+        price: true,
+        createdAt: true,
+        design: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+        buyer: {
+          select: {
+            id: true,
+            email: true,
+            displayName: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Calculate total earnings
+    const totalEarnings = purchases.reduce(
+      (sum, purchase) => sum + Number(purchase.price),
+      0
+    );
+
+    // Format purchase records for response
+    const formattedPurchases = purchases.map(p => ({
+      id: p.id,
+      amount: Number(p.price),
+      type: 'SALE',
+      description: `Sale of ${p.design.title}`,
+      designId: p.design.id,
+      designTitle: p.design.title,
+      designSlug: p.design.slug,
+      buyerId: p.buyer.id,
+      buyerName: p.buyer.displayName || p.buyer.email.split('@')[0],
+      createdAt: p.createdAt,
+      status: 'COMPLETED',
+    }));
+
+    return ok(res, {
+      stats: {
+        totalEarnings,
+        totalSales: purchases.length,
+        pendingPayouts: 0, // TODO: Calculate after payout system implemented
+        availableBalance: totalEarnings, // TODO: Subtract payouts when implemented
+        totalPaid: 0, // TODO: Calculate from payout records
+      },
+      earnings: formattedPurchases,
+    });
+
+  } catch (error) {
+    console.error('[Architect] Get earnings error:', error);
+    return serverError(res, 'Failed to fetch earnings');
+  }
+});
+
+/**
  * POST /architect/payouts/release
  * Release pending payouts to bank
  */
