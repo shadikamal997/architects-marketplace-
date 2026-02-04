@@ -13,7 +13,7 @@ const SENTRY_ENVIRONMENT = process.env.NODE_ENV || 'development';
 
 export function initializeSentry() {
   if (!SENTRY_DSN) {
-    console.warn('⚠️  Sentry DSN not configured. Error monitoring disabled.');
+    console.warn('  Sentry DSN not configured. Error monitoring disabled.');
     return;
   }
 
@@ -62,7 +62,7 @@ export function initializeSentry() {
     }
   });
 
-  console.log('✅ Sentry initialized for error monitoring and performance tracking');
+  console.log(' Sentry initialized for error monitoring and performance tracking');
 }
 
 // Performance monitoring middleware

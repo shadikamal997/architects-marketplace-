@@ -90,6 +90,39 @@ enum LicenseType {
   EXCLUSIVE
 }
 
+/// Structural system enum for technical specifications
+enum StructuralSystem {
+  CONCRETE
+  STEEL
+  TIMBER
+  MASONRY
+  MIXED
+}
+
+/// Climate zone enum for sustainability
+enum ClimateZone {
+  TROPICAL
+  ARID
+  TEMPERATE
+  CONTINENTAL
+  POLAR
+}
+
+/// Design stage enum for development level
+enum DesignStage {
+  CONCEPT
+  SCHEMATIC
+  DETAILED
+  CONSTRUCTION_READY
+}
+
+/// Design file type enum for file management
+enum DesignFileType {
+  MAIN_PACKAGE
+  PREVIEW_IMAGE
+  THREE_D_ASSET
+}
+
 /// Account type enum
 enum AccountType {
   INDIVIDUAL
@@ -101,6 +134,19 @@ enum PayoutSchedule {
   DAILY
   WEEKLY
   MONTHLY
+}
+
+/// Review status enum for moderation
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+  DELETED
+}
+
+/// Auth provider type enum
+enum AuthProviderType {
+  GOOGLE
+  APPLE
 }
 
 // ============================================================================
@@ -130,6 +176,8 @@ model User {
   architectModifications ModificationRequest[] @relation("ArchitectModifications")
   sentMessages           Message[]
   auditLogs              AuditLog[]
+  reviews                Review[]
+  authProviders          AuthProvider[]
 
   @@index([email])
 }
@@ -210,19 +258,75 @@ model Design {
   id             String       @id @default(uuid())
   slug           String?      @unique
   architectId    String
+  
+  // STEP 1: Design Identity
   title          String
+  shortSummary   String?
   description    String
+  concept        String?      @db.Text
+  designPhilosophy String?    @db.Text
+  idealBuyer     String?      @db.Text
+  
   category       String
-  price          Decimal      @db.Decimal(10, 2)
+  subCategory    String?
+  style          String?
+  targetMarket   String?
+  
+  // STEP 2: Technical Specifications
+  totalArea      Float?
+  areaUnit       String?      // "sqm" or "sqft"
+  floors         Int?
+  bedrooms       Int?
+  bathrooms      Int?
+  parkingSpaces  Int?
+  structuralSystem StructuralSystem?
+  estimatedCost  Float?
+  designStage    DesignStage?
+  
+  // STEP 3: Features & Sustainability
+  features       String[]     // Amenities tags array
+  sustainabilityTags String[]
+  energyNotes    String?      @db.Text
+  climateZone    ClimateZone?
+  codeDisclaimer Boolean      @default(false)
+  
+  // STEP 4: Licensing & Pricing
+  licenseType    LicenseType  @default(STANDARD)
+  price          Decimal      @db.Decimal(10, 2) // Standard price (backward compatibility)
+  standardPrice  Float?
+  exclusivePrice Float?
+  allowModifications Boolean   @default(false)
+  modificationPrice Float?
+  modificationTime String?
+  modificationScope String?   @db.Text
+  
+  // STEP 5: Additional Notes
+  additionalNotes String?     @db.Text
+  limitations    String?      @db.Text
+  
+  // Legacy/Preview
   previewImageUrl String?
+  
+  // Status & Moderation
   status         DesignStatus @default(DRAFT)
-  rejectionReason String?
+  rejectionReason String?     @db.Text
+  adminNotes     String?      @db.Text
+  
+  // Timestamps
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  submittedAt    DateTime?
+  approvedAt     DateTime?
+  publishedAt    DateTime?
+
+  // Review aggregation fields
+  averageRating  Float        @default(0)
+  reviewCount    Int          @default(0)
 
   // Relationships
   architect    Architect     @relation(fields: [architectId], references: [id], onDelete: Cascade)
   purchases    Purchase[]
+  reviews      Review[]
   files        DesignFile[]
   transactions Transaction[]
   licenses     License[]
@@ -239,6 +343,8 @@ model Design {
   @@index([title])
   @@index([description])
   @@index([slug])
+  @@index([designStage])
+  @@index([licenseType])
   // Full-text search index for title and description
   @@index([title, description])
 }
@@ -252,25 +358,63 @@ model Purchase {
   createdAt DateTime @default(now())
 
   // Relationships
-  buyer  Buyer  @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  design Design @relation(fields: [designId], references: [id], onDelete: Restrict)
+  buyer   Buyer   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  design  Design  @relation(fields: [designId], references: [id], onDelete: Restrict)
+  reviews Review[]
 
   @@index([buyerId])
   @@index([designId])
 }
 
+/// Review - Buyer reviews for purchased designs
+model Review {
+  id         String       @id @default(uuid())
+  rating     Int          // 1-5 stars
+  comment    String       // 10-1000 characters
+  status     ReviewStatus @default(PUBLISHED)
+
+  // Foreign keys
+  buyerId    String
+  designId   String
+  purchaseId String
+
+  // Timestamps
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // Relationships
+  buyer      User         @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  design     Design       @relation(fields: [designId], references: [id], onDelete: Cascade)
+  purchase   Purchase     @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  // Constraints
+  @@unique([buyerId, designId]) // One review per buyer per design
+  @@index([designId, status])   // Fast queries for published reviews
+  @@index([buyerId])
+  @@index([purchaseId])
+}
+
 /// DesignFile - Metadata for design-related files stored in S3
 model DesignFile {
-  id                    String   @id @default(uuid())
+  id                    String         @id @default(uuid())
   designId              String
   uploadedByArchitectId String
-  fileType              FileType
+  
+  // File metadata
+  fileType              DesignFileType // MAIN_PACKAGE, PREVIEW_IMAGE, THREE_D_ASSET
   originalFileName      String
-  storageKey            String   @unique
-  fileSize              Int
+  storageKey            String         @unique
+  fileSize              Int            // Bytes
   mimeType              String
-  isPublicPreview       Boolean  @default(false)
-  createdAt             DateTime @default(now())
+  
+  // Display & ordering
+  isPublicPreview       Boolean        @default(false)
+  displayOrder          Int?           // For preview images ordering
+  
+  // Legacy support (keep for backward compatibility)
+  legacyFileType        FileType?      // OLD: PREVIEW_IMAGE, DESIGN_ARCHIVE, etc.
+  
+  createdAt             DateTime       @default(now())
 
   // Relationships
   design    Design    @relation(fields: [designId], references: [id], onDelete: Cascade)
@@ -279,6 +423,7 @@ model DesignFile {
   @@index([designId])
   @@index([uploadedByArchitectId])
   @@index([fileType])
+  @@index([designId, fileType])
 }
 
 /// Transaction - Payment transaction records
@@ -489,3 +634,18 @@ model AuditLog {
   @@index([createdAt])
 }
 
+/// Auth provider for Google/Apple sign-in
+model AuthProvider {
+  id              String   @id @default(uuid())
+
+  provider        AuthProviderType
+  providerUserId  String   // sub / google user id
+
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@unique([provider, providerUserId]) // one provider account = one user
+  @@index([userId])
+}

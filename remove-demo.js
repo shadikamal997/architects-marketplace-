@@ -27,13 +27,13 @@ async function removeDemoData() {
     await prisma.purchase.deleteMany({
       where: { designId: { in: demoDesignIds } }
     });
-    console.log('✅ Deleted associated purchases');
+    console.log(' Deleted associated purchases');
 
     // Then delete the designs
     await prisma.design.deleteMany({
       where: { title: { in: demoTitles } }
     });
-    console.log('✅ Deleted demo designs');
+    console.log(' Deleted demo designs');
   }
 
   // Check remaining designs

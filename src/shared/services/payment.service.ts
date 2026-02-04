@@ -56,7 +56,7 @@ export class PaymentService {
     // In development, allow missing credentials but warn
     if (process.env.NODE_ENV !== 'production') {
       if (!this.config.secretKey) {
-        console.warn('⚠️  Stripe credentials not configured. Payment features will fail.');
+        console.warn('  Stripe credentials not configured. Payment features will fail.');
         this.config.secretKey = 'sk_test_dev_key_placeholder';
       }
     } else {

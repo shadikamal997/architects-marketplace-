@@ -65,10 +65,10 @@ async function testHealthCheck() {
   const result = await makeRequest('GET', '/api/health');
 
   if (result.success) {
-    console.log('✅ Health check passed');
+    console.log(' Health check passed');
     return true;
   } else {
-    console.log('❌ Health check failed:', result.error);
+    console.log(' Health check failed:', result.error);
     return false;
   }
 }
@@ -87,10 +87,10 @@ async function testUserRegistration() {
   const result = await makeRequest('POST', '/api/auth/register', testUser);
 
   if (result.success) {
-    console.log('✅ User registration passed');
+    console.log(' User registration passed');
     return true;
   } else {
-    console.log('❌ User registration failed:', result.error);
+    console.log(' User registration failed:', result.error);
     return false;
   }
 }
@@ -107,10 +107,10 @@ async function testUserLogin() {
 
   if (result.success && result.data.token) {
     authTokens.buyer = result.data.token;
-    console.log('✅ User login passed');
+    console.log(' User login passed');
     return true;
   } else {
-    console.log('❌ User login failed:', result.error);
+    console.log(' User login failed:', result.error);
     return false;
   }
 }
@@ -121,10 +121,10 @@ async function testMarketplaceAccess() {
   const result = await makeRequest('GET', '/api/marketplace');
 
   if (result.success) {
-    console.log('✅ Marketplace access passed');
+    console.log(' Marketplace access passed');
     return true;
   } else {
-    console.log('❌ Marketplace access failed:', result.error);
+    console.log(' Marketplace access failed:', result.error);
     return false;
   }
 }
@@ -135,10 +135,10 @@ async function testSearchFunctionality() {
   const result = await makeRequest('GET', '/api/search/suggestions?q=modern');
 
   if (result.success) {
-    console.log('✅ Search functionality passed');
+    console.log(' Search functionality passed');
     return true;
   } else {
-    console.log('❌ Search functionality failed:', result.error);
+    console.log(' Search functionality failed:', result.error);
     return false;
   }
 }
@@ -149,18 +149,18 @@ async function testProtectedRoutes() {
   // Test without token
   const noTokenResult = await makeRequest('GET', '/api/buyer/purchases');
   if (noTokenResult.success) {
-    console.log('❌ Protected route should require authentication');
+    console.log(' Protected route should require authentication');
     return false;
   }
 
   // Test with token
   if (authTokens.buyer) {
     const withTokenResult = await makeRequest('GET', '/api/buyer/purchases', null, authTokens.buyer);
-    console.log('✅ Protected routes working correctly');
+    console.log(' Protected routes working correctly');
     return true;
   }
 
-  console.log('⚠️  Skipping token test - no auth token available');
+  console.log('  Skipping token test - no auth token available');
   return true;
 }
 
@@ -179,10 +179,10 @@ async function testRateLimiting() {
   const failures = results.filter(r => !r.success).length;
 
   if (failures > 0) {
-    console.log('✅ Rate limiting appears to be working');
+    console.log(' Rate limiting appears to be working');
     return true;
   } else {
-    console.log('⚠️  Rate limiting may not be properly configured');
+    console.log('  Rate limiting may not be properly configured');
     return true; // Not critical for UAT
   }
 }
@@ -216,10 +216,10 @@ async function runUATPreparationTests() {
   console.log(`🧪 UAT Preparation: ${passed}/${total} PASSED`);
 
   if (passed >= total - 1) { // Allow 1 test to fail
-    console.log('✅ SYSTEM READY FOR UAT');
+    console.log(' SYSTEM READY FOR UAT');
     console.log('🎯 Core functionality verified');
   } else {
-    console.log('❌ SYSTEM NEEDS FIXES BEFORE UAT');
+    console.log(' SYSTEM NEEDS FIXES BEFORE UAT');
     console.log('🔧 Address critical issues first');
   }
 

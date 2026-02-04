@@ -208,16 +208,16 @@ export function validateEnvironment(): void {
   const result = validator.validate();
 
   if (result.errors.length > 0) {
-    console.error('❌ Environment validation failed:');
+    console.error(' Environment validation failed:');
     result.errors.forEach(error => console.error(`  - ${error}`));
     console.error('\nPlease check your .env file and ensure all required variables are set.');
     process.exit(1);
   }
 
   if (result.warnings.length > 0) {
-    console.warn('⚠️  Environment validation warnings:');
+    console.warn('  Environment validation warnings:');
     result.warnings.forEach(warning => console.warn(`  - ${warning}`));
   }
 
-  console.log('✅ Environment validation passed');
+  console.log(' Environment validation passed');
 }

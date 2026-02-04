@@ -4,12 +4,40 @@ import { requireAuthMiddleware } from '../modules/auth/middleware/auth.middlewar
 import { requireRole } from '../modules/auth/guards/permission.guard';
 import { UserRole } from '../modules/auth/roles.enum';
 import { ok, fail } from '../utils/response.js';
+import { AuthenticatedRequest } from '../modules/auth/authenticated-request';
 
 const router = Router();
 
 // All architect routes require authentication and ARCHITECT role
 router.use(requireAuthMiddleware);
 router.use(requireRole(UserRole.ARCHITECT));
+
+/**
+ * GET /architect/debug
+ * Debug endpoint to check auth state
+ */
+router.get('/debug', async (req, res) => {
+  try {
+    const authReq = req as unknown as AuthenticatedRequest;
+    console.log('[DEBUG] Full req.user:', JSON.stringify(authReq.user, null, 2));
+    
+    // Try to find user and architect
+    const user = await prisma.user.findUnique({
+      where: { id: authReq.user!.userId },
+      include: { architect: true, buyer: true },
+    });
+
+    return ok(res, {
+      reqUser: authReq.user,
+      dbUser: user,
+      hasArchitect: !!user?.architect,
+      architectId: user?.architect?.id,
+    });
+  } catch (error) {
+    console.error('[DEBUG] Error:', error);
+    return fail(res, String(error), 500);
+  }
+});
 
 /**
  * GET /architect/dashboard
@@ -371,16 +399,40 @@ router.get('/earnings', async (req, res) => {
  */
 router.get('/account', async (req, res) => {
   try {
-    // req.user!.id is architectId, need to find architect directly
-    const architect = await prisma.architect.findUnique({
-      where: { id: req.user!.id },
+    const authReq = req as unknown as AuthenticatedRequest;
+    console.log('[Architect Account] req.user:', authReq.user);
+    console.log('[Architect Account] Looking for architectId:', authReq.user!.id);
+    
+    // req.user!.id is architectId (roleEntityId), need to find architect directly
+    let architect = await prisma.architect.findUnique({
+      where: { id: authReq.user!.id },
       include: {
         user: true,
+        payoutBanks: true,
       },
     });
 
+    // Fallback: If architect not found by architectId, try finding by userId
+    if (!architect && authReq.user!.userId) {
+      console.log('[Architect Account] Architect not found by architectId, trying userId:', authReq.user!.userId);
+      const user = await prisma.user.findUnique({
+        where: { id: authReq.user!.userId },
+        include: {
+          architect: {
+            include: {
+              user: true,
+              payoutBanks: true,
+            },
+          },
+        },
+      });
+      architect = user?.architect || null;
+    }
+
     if (!architect) {
-      return fail(res, 'Architect account not found', 404);
+      console.error('[Architect Account] Architect not found with id:', req.user!.id);
+      console.error('[Architect Account] Full req.user:', JSON.stringify(req.user, null, 2));
+      return fail(res, 'Architect account not found. Please log out and log back in.', 404);
     }
 
     return ok(res, {
@@ -389,6 +441,7 @@ router.get('/account', async (req, res) => {
         displayName: architect.displayName,
         company: architect.company,
         bio: architect.bio,
+        payoutBanks: architect.payoutBanks || [],
         user: {
           id: architect.user.id,
           email: architect.user.email,
@@ -511,4 +564,4 @@ router.get('/messages', async (req, res) => {
   }
 });
 
-export default router;
+export = router;

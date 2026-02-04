@@ -281,7 +281,7 @@ async function runLoadTest() {
   console.log(`⏱️  Total Duration: ${totalDuration.toFixed(2)}s`);
   console.log(`👥 Concurrent Users: ${CONCURRENT_USERS}`);
   console.log(`📊 Total Requests: ${Object.values(metrics).reduce((sum, m) => sum + m.requests, 0)}`);
-  console.log(`❌ Total Errors: ${Object.values(metrics).reduce((sum, m) => sum + m.errors, 0)}`);
+  console.log(` Total Errors: ${Object.values(metrics).reduce((sum, m) => sum + m.errors, 0)}`);
   console.log('');
 
   // Per-endpoint results
@@ -316,10 +316,10 @@ async function runLoadTest() {
   console.log('📝 Note: Testing without database connection - endpoints return 500 errors as expected');
 
   if (overallErrorRate < 10) { // Higher threshold since DB is not connected
-    console.log('✅ SYSTEM IS STABLE');
+    console.log(' SYSTEM IS STABLE');
     console.log(`   Overall error rate: ${overallErrorRate.toFixed(2)}% (< 10% threshold for no-DB testing)`);
   } else {
-    console.log('❌ SYSTEM HAS ISSUES');
+    console.log(' SYSTEM HAS ISSUES');
     console.log(`   Overall error rate: ${overallErrorRate.toFixed(2)}% (> 10% threshold)`);
   }
 
@@ -327,9 +327,9 @@ async function runLoadTest() {
   const authRequests = metrics.auth.requests;
   const authErrors = metrics.auth.errors;
   if (authRequests > 10) {
-    console.log('✅ Rate limiting appears to be working (auth endpoint protected)');
+    console.log(' Rate limiting appears to be working (auth endpoint protected)');
   } else {
-    console.log('⚠️  Rate limiting may not be properly configured');
+    console.log('  Rate limiting may not be properly configured');
   }
 
   // Check that auth middleware is working (401 responses for protected endpoints)
@@ -339,9 +339,9 @@ async function runLoadTest() {
     .some(m => m.latencies.length > 0); // If we got responses, auth middleware is working
 
   if (authRejections) {
-    console.log('✅ Authentication middleware is working (protected endpoints reject unauthorized access)');
+    console.log(' Authentication middleware is working (protected endpoints reject unauthorized access)');
   } else {
-    console.log('⚠️  Authentication middleware may not be properly configured');
+    console.log('  Authentication middleware may not be properly configured');
   }
 
   // Performance assessment
@@ -349,11 +349,11 @@ async function runLoadTest() {
   const overallAvgLatency = avgLatencies.reduce((a, b) => a + b, 0) / avgLatencies.length;
 
   if (overallAvgLatency < 1000) {
-    console.log('✅ Performance is excellent (< 1000ms average)');
+    console.log(' Performance is excellent (< 1000ms average)');
   } else if (overallAvgLatency < 2000) {
-    console.log('⚠️  Performance is acceptable (1000-2000ms average)');
+    console.log('  Performance is acceptable (1000-2000ms average)');
   } else {
-    console.log('❌ Performance needs optimization (> 2000ms average)');
+    console.log(' Performance needs optimization (> 2000ms average)');
   }
 
   console.log('\n🔍 BOTTLENECKS IDENTIFIED:');
@@ -364,13 +364,13 @@ async function runLoadTest() {
   console.log('4. Authentication middleware correctly rejects unauthorized requests');
   console.log('5. Rate limiting is active and protecting auth endpoints');
 
-  console.log('\n✅ CONFIRMED SYSTEM IS STABLE:');
+  console.log('\n CONFIRMED SYSTEM IS STABLE:');
   console.log('─'.repeat(60));
-  console.log('✓ Server starts and handles requests without crashing');
-  console.log('✓ Authentication rate limiting is working');
-  console.log('✓ Protected endpoints require authentication');
-  console.log('✓ Error handling is graceful (no 500 errors from crashes)');
-  console.log('✓ Response times are reasonable for no-DB scenario');
+  console.log(' Server starts and handles requests without crashing');
+  console.log(' Authentication rate limiting is working');
+  console.log(' Protected endpoints require authentication');
+  console.log(' Error handling is graceful (no 500 errors from crashes)');
+  console.log(' Response times are reasonable for no-DB scenario');
 
   console.log('\n🏁 Load test completed');
 }

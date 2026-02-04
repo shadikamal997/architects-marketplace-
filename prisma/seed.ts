@@ -60,7 +60,7 @@ async function main() {
     }
   });
 
-  console.log('✓ Created demo users (architect@example.com, buyer@example.com, admin@example.com)');
+  console.log(' Created demo users (architect@example.com, buyer@example.com, admin@example.com)');
   console.log('  Password for all: password123');
 
   // Create sample designs
@@ -129,7 +129,7 @@ async function main() {
     createdDesigns.push(design);
   }
 
-  console.log(`✓ Created ${designs.length} sample designs (5 published, 1 draft)`);
+  console.log(` Created ${designs.length} sample designs (5 published, 1 draft)`);
 
   // Create sample purchases
   const publishedDesigns = createdDesigns.filter(d => d.status === 'PUBLISHED').slice(0, 2);
@@ -144,7 +144,7 @@ async function main() {
     });
   }
 
-  console.log(`✓ Created ${publishedDesigns.length} sample purchases for buyer`);
+  console.log(` Created ${publishedDesigns.length} sample purchases for buyer`);
 
   console.log('\n🎉 Database seeded successfully!\n');
   console.log('You can now:');

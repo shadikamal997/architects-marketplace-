@@ -131,22 +131,22 @@ async function runSimplifiedLoadTest() {
 
   console.log('🔍 Testing server availability...');
   const healthResult = await testHealth();
-  console.log(`Health check: ${healthResult.status === 200 ? '✅ PASS' : '❌ FAIL'} (${healthResult.status})`);
+  console.log(`Health check: ${healthResult.status === 200 ? ' PASS' : ' FAIL'} (${healthResult.status})`);
 
   if (healthResult.status !== 200) {
-    console.log('❌ Server is not responding. Cannot proceed with load test.');
+    console.log(' Server is not responding. Cannot proceed with load test.');
     return;
   }
 
   console.log('\n🔐 Testing rate limiting...');
   const rateLimitResults = await testRateLimiting();
   const rateLimited = rateLimitResults.some(r => r.status === 429);
-  console.log(`Rate limiting: ${rateLimited ? '✅ ACTIVE' : '⚠️  NOT DETECTED'}`);
+  console.log(`Rate limiting: ${rateLimited ? ' ACTIVE' : '  NOT DETECTED'}`);
 
   console.log('\n🔒 Testing protected endpoints...');
   const protectedResults = await testProtectedEndpoints();
   const properlyProtected = protectedResults.every(r => r.status === 401 || r.status === 500);
-  console.log(`Protected endpoints: ${properlyProtected ? '✅ SECURE' : '⚠️  MAY BE VULNERABLE'}`);
+  console.log(`Protected endpoints: ${properlyProtected ? ' SECURE' : '  MAY BE VULNERABLE'}`);
 
   // Run concurrent load
   console.log('\n🏃 Running concurrent load test...');
@@ -170,8 +170,8 @@ async function runSimplifiedLoadTest() {
   console.log('─'.repeat(50));
   console.log(`⏱️  Duration: ${totalDuration.toFixed(2)}s`);
   console.log(`📊 Total Requests: ${totalRequests}`);
-  console.log(`❌ Errors: ${totalErrors}`);
-  console.log(`⏰ Timeouts: ${totalTimeouts}`);
+  console.log(` Errors: ${totalErrors}`);
+  console.log(` Timeouts: ${totalTimeouts}`);
   console.log(`📈 Error Rate: ${errorRate.toFixed(2)}%`);
   console.log(`⚡ Avg Response Time: ${avgResponseTime.toFixed(2)}ms`);
   console.log(`🐌 Max Response Time: ${maxResponseTime.toFixed(2)}ms`);
@@ -186,45 +186,45 @@ async function runSimplifiedLoadTest() {
   // Health check
   if (healthResult.status === 200) {
     stabilityScore += 25;
-    checks.push('✅ Server responds to health checks');
+    checks.push(' Server responds to health checks');
   } else {
-    checks.push('❌ Server not responding');
+    checks.push(' Server not responding');
   }
 
   // Rate limiting
   if (rateLimited) {
     stabilityScore += 25;
-    checks.push('✅ Rate limiting is active');
+    checks.push(' Rate limiting is active');
   } else {
-    checks.push('⚠️  Rate limiting not detected');
+    checks.push('  Rate limiting not detected');
   }
 
   // Protected endpoints
   if (properlyProtected) {
     stabilityScore += 25;
-    checks.push('✅ Protected endpoints require authentication');
+    checks.push(' Protected endpoints require authentication');
   } else {
-    checks.push('⚠️  Some endpoints may be unprotected');
+    checks.push('  Some endpoints may be unprotected');
   }
 
   // Performance
   if (avgResponseTime < 1000) {
     stabilityScore += 15;
-    checks.push('✅ Good response times');
+    checks.push(' Good response times');
   } else if (avgResponseTime < 5000) {
     stabilityScore += 10;
-    checks.push('⚠️  Acceptable response times');
+    checks.push('  Acceptable response times');
   } else {
     stabilityScore += 5;
-    checks.push('❌ Poor response times');
+    checks.push(' Poor response times');
   }
 
   // Error rate
   if (errorRate < 10) {
     stabilityScore += 10;
-    checks.push('✅ Low error rate');
+    checks.push(' Low error rate');
   } else {
-    checks.push('⚠️  High error rate');
+    checks.push('  High error rate');
   }
 
   checks.forEach(check => console.log(check));
@@ -232,11 +232,11 @@ async function runSimplifiedLoadTest() {
   console.log(`\n🏆 OVERALL STABILITY SCORE: ${stabilityScore}/100`);
 
   if (stabilityScore >= 80) {
-    console.log('✅ SYSTEM IS STABLE - Ready for production');
+    console.log(' SYSTEM IS STABLE - Ready for production');
   } else if (stabilityScore >= 60) {
-    console.log('⚠️  SYSTEM IS MOSTLY STABLE - Minor issues to address');
+    console.log('  SYSTEM IS MOSTLY STABLE - Minor issues to address');
   } else {
-    console.log('❌ SYSTEM HAS ISSUES - Requires attention before production');
+    console.log(' SYSTEM HAS ISSUES - Requires attention before production');
   }
 
   console.log('\n🏁 Load test completed');

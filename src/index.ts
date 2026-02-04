@@ -47,7 +47,7 @@ async function fixDataIntegrity() {
       await prisma.$executeRaw`
         UPDATE "Design" SET status = 'DRAFT' WHERE status IS NULL
       `;
-      console.log(`✅ Fixed ${designsWithNullStatus.length} designs with null status → DRAFT`);
+      console.log(` Fixed ${designsWithNullStatus.length} designs with null status → DRAFT`);
     }
 
     // For designs with null price, set to 0.00 (they won't be publishable until price is set)
@@ -55,12 +55,12 @@ async function fixDataIntegrity() {
       await prisma.$executeRaw`
         UPDATE "Design" SET price = 0.00 WHERE price IS NULL
       `;
-      console.log(`✅ Fixed ${designsWithNullPrice.length} designs with null price → 0.00`);
-      console.log(`⚠️  These designs cannot be published until price is set properly`);
+      console.log(` Fixed ${designsWithNullPrice.length} designs with null price → 0.00`);
+      console.log(`  These designs cannot be published until price is set properly`);
     }
 
   } catch (error) {
-    console.error('❌ Error during data integrity fix:', error);
+    console.error(' Error during data integrity fix:', error);
   }
 }
 
@@ -395,7 +395,7 @@ app.use("/api/modifications", modificationRoutes);
 // JWT Secret from environment variable - STRICT VALIDATION
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
-  console.error('❌ CRITICAL: JWT_SECRET must be set and at least 32 characters long');
+  console.error(' CRITICAL: JWT_SECRET must be set and at least 32 characters long');
   process.exit(1);
 }
 
@@ -4265,12 +4265,12 @@ async function startServer() {
 
     console.log('🔄 Testing database connection...');
     await prisma.$connect();
-    console.log(`✓ Database connected`);
+    console.log(` Database connected`);
 
     // Fix data integrity issues on startup
     console.log('🔧 Checking data integrity...');
     await fixDataIntegrity();
-    console.log('✓ Data integrity check completed');
+    console.log(' Data integrity check completed');
 
     console.log(`🚀 Starting server on port ${envInfo.port}...`);
     
@@ -4278,9 +4278,9 @@ async function startServer() {
     app.use(sentryErrorHandler());
     
     const server = app.listen(envInfo.port, '127.0.0.1', () => {
-      console.log(`✓ Server running on http://localhost:${envInfo.port}`);
-      console.log(`✓ Environment: ${envInfo.environment}`);
-      console.log(`✓ Ready to accept requests`);
+      console.log(` Server running on http://localhost:${envInfo.port}`);
+      console.log(` Environment: ${envInfo.environment}`);
+      console.log(` Ready to accept requests`);
       const addr = server.address();
       console.log(`🔍 Server address:`, typeof addr === 'object' ? JSON.stringify(addr) : addr);
 
@@ -4293,7 +4293,7 @@ async function startServer() {
 
     // Handle server errors
     server.on('error', (error) => {
-      console.error('❌ Server error:', error);
+      console.error(' Server error:', error);
       logger.error('Server failed to start', error as Error);
       process.exit(1);
     });
@@ -4327,20 +4327,20 @@ async function startServer() {
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
   } catch (error) {
-    console.error('❌ Failed to connect to database:', error);
+    console.error(' Failed to connect to database:', error);
     logger.error('Database connection failed', error as Error);
-    console.log('⚠️  Starting server without database connection');
+    console.log('  Starting server without database connection');
 
     console.log(`🚀 Starting server on port ${envInfo.port} (without database)...`);
     const server = app.listen(envInfo.port, '127.0.0.1', () => {
-      console.log(`✓ Server running on http://localhost:${envInfo.port} (without database)`);
-      console.log(`✓ Ready to accept requests`);
+      console.log(` Server running on http://localhost:${envInfo.port} (without database)`);
+      console.log(` Ready to accept requests`);
       const addr = server.address();
       console.log(`🔍 Server address:`, typeof addr === 'object' ? JSON.stringify(addr) : addr);
     });
 
     server.on('error', (error) => {
-      console.error('❌ Server error:', error);
+      console.error(' Server error:', error);
       logger.error('Server failed to start', error as Error);
     });
   }

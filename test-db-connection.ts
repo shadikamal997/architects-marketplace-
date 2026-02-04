@@ -14,17 +14,17 @@ async function testConnection() {
   try {
     // Test database connection
     await prisma.$connect();
-    console.log('✅ Database connection successful!\n');
+    console.log(' Database connection successful!\n');
     
     // Test query execution
     console.log('🔍 Testing query execution...');
     const result = await prisma.$queryRaw`SELECT version()`;
-    console.log('✅ Query executed successfully!');
+    console.log(' Query executed successfully!');
     console.log('📊 PostgreSQL Version:', result);
     
     return true;
   } catch (error: any) {
-    console.error('❌ Database connection failed!');
+    console.error(' Database connection failed!');
     console.error('Error:', error.message);
     
     if (error.message.includes('Can\'t reach database server')) {

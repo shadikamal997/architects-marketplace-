@@ -62,14 +62,14 @@ async function runTests() {
     console.log(`Status: ${registerRes.status}`);
     console.log(`Response:`, JSON.stringify(registerRes.data, null, 2).substring(0, 200));
     const token = registerRes.data.token;
-    console.log(`Token obtained: ${token ? '✓' : '✗'}\n`);
+    console.log(`Token obtained: ${token ? '' : '✗'}\n`);
 
     // Test 2: Get designs (with auth) - CHECK NEW FORMAT
     console.log('2. Testing GET /architect/designs (standardized response)...');
     const getDesignsRes = await makeRequest('GET', '/architect/designs', null, token);
     console.log(`Status: ${getDesignsRes.status}`);
-    console.log(`Has "success" field: ${getDesignsRes.data.success !== undefined ? '✓' : '✗'}`);
-    console.log(`Has "data" field: ${getDesignsRes.data.data !== undefined ? '✓' : '✗'}`);
+    console.log(`Has "success" field: ${getDesignsRes.data.success !== undefined ? '' : '✗'}`);
+    console.log(`Has "data" field: ${getDesignsRes.data.data !== undefined ? '' : '✗'}`);
     console.log(`Response:`, JSON.stringify(getDesignsRes.data, null, 2).substring(0, 300));
     console.log();
 
@@ -82,8 +82,8 @@ async function runTests() {
       priceUsdCents: 5000
     }, token);
     console.log(`Status: ${createDesignRes.status} (should be 201)`);
-    console.log(`Has "success" field: ${createDesignRes.data.success !== undefined ? '✓' : '✗'}`);
-    console.log(`Has "data" field: ${createDesignRes.data.data !== undefined ? '✓' : '✗'}`);
+    console.log(`Has "success" field: ${createDesignRes.data.success !== undefined ? '' : '✗'}`);
+    console.log(`Has "data" field: ${createDesignRes.data.data !== undefined ? '' : '✗'}`);
     console.log(`Response:`, JSON.stringify(createDesignRes.data, null, 2).substring(0, 300));
     console.log();
 
@@ -91,8 +91,8 @@ async function runTests() {
     console.log('4. Testing GET /architect/payouts (standardized response)...');
     const getPayoutsRes = await makeRequest('GET', '/architect/payouts', null, token);
     console.log(`Status: ${getPayoutsRes.status}`);
-    console.log(`Has "success" field: ${getPayoutsRes.data.success !== undefined ? '✓' : '✗'}`);
-    console.log(`Has "data" field: ${getPayoutsRes.data.data !== undefined ? '✓' : '✗'}`);
+    console.log(`Has "success" field: ${getPayoutsRes.data.success !== undefined ? '' : '✗'}`);
+    console.log(`Has "data" field: ${getPayoutsRes.data.data !== undefined ? '' : '✗'}`);
     console.log(`Response:`, JSON.stringify(getPayoutsRes.data, null, 2).substring(0, 300));
     console.log();
 
@@ -100,9 +100,9 @@ async function runTests() {
     console.log('5. Testing GET /buyer/library with architect token (standardized error)...');
     const getBuyerLibRes = await makeRequest('GET', '/buyer/library', null, token);
     console.log(`Status: ${getBuyerLibRes.status} (should be 403)`);
-    console.log(`Has "success" field: ${getBuyerLibRes.data.success !== undefined ? '✓' : '✗'}`);
-    console.log(`success === false: ${getBuyerLibRes.data.success === false ? '✓' : '✗'}`);
-    console.log(`Has "error" field: ${getBuyerLibRes.data.error !== undefined ? '✓' : '✗'}`);
+    console.log(`Has "success" field: ${getBuyerLibRes.data.success !== undefined ? '' : '✗'}`);
+    console.log(`success === false: ${getBuyerLibRes.data.success === false ? '' : '✗'}`);
+    console.log(`Has "error" field: ${getBuyerLibRes.data.error !== undefined ? '' : '✗'}`);
     console.log(`Response:`, JSON.stringify(getBuyerLibRes.data, null, 2));
     console.log();
 
@@ -122,14 +122,14 @@ async function runTests() {
       });
     }
     const buyerToken = registerBuyerRes.data.token;
-    console.log(`Buyer token obtained: ${buyerToken ? '✓' : '✗'}\n`);
+    console.log(`Buyer token obtained: ${buyerToken ? '' : '✗'}\n`);
 
     // Test 7: Get buyer library - CHECK NEW FORMAT
     console.log('7. Testing GET /buyer/library (standardized response)...');
     const getBuyerLibRes2 = await makeRequest('GET', '/buyer/library', null, buyerToken);
     console.log(`Status: ${getBuyerLibRes2.status}`);
-    console.log(`Has "success" field: ${getBuyerLibRes2.data.success !== undefined ? '✓' : '✗'}`);
-    console.log(`Has "data" field: ${getBuyerLibRes2.data.data !== undefined ? '✓' : '✗'}`);
+    console.log(`Has "success" field: ${getBuyerLibRes2.data.success !== undefined ? '' : '✗'}`);
+    console.log(`Has "data" field: ${getBuyerLibRes2.data.data !== undefined ? '' : '✗'}`);
     console.log(`Response:`, JSON.stringify(getBuyerLibRes2.data, null, 2));
     console.log();
 
@@ -137,18 +137,18 @@ async function runTests() {
     console.log('8. Testing GET /architect/designs without token (standardized error)...');
     const noAuthRes = await makeRequest('GET', '/architect/designs', null, null);
     console.log(`Status: ${noAuthRes.status} (should be 401)`);
-    console.log(`Has "success" field: ${noAuthRes.data.success !== undefined ? '✓' : '✗'}`);
-    console.log(`success === false: ${noAuthRes.data.success === false ? '✓' : '✗'}`);
+    console.log(`Has "success" field: ${noAuthRes.data.success !== undefined ? '' : '✗'}`);
+    console.log(`success === false: ${noAuthRes.data.success === false ? '' : '✗'}`);
     console.log(`Has "error" field: ${noAuthRes.data.error !== undefined ? '✗' : '✗'}`);
     console.log(`Response:`, JSON.stringify(noAuthRes.data, null, 2));
     console.log();
 
-    console.log('=== ALL TESTS COMPLETE ✓ ===');
+    console.log('=== ALL TESTS COMPLETE  ===');
     console.log('\n📊 STANDARDIZATION CHECK:');
-    console.log('✅ All success responses: { success: true, data: {...} }');
-    console.log('✅ All error responses: { success: false, error: "message" }');
-    console.log('✅ POST routes return 201 status code');
-    console.log('✅ Frontend can safely check response.success');
+    console.log(' All success responses: { success: true, data: {...} }');
+    console.log(' All error responses: { success: false, error: "message" }');
+    console.log(' POST routes return 201 status code');
+    console.log(' Frontend can safely check response.success');
   } catch (error) {
     console.error('Error:', error.message);
   }
