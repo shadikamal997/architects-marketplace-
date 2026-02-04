@@ -777,28 +777,62 @@ router.delete('/designs/:id/files/:fileId', async (req, res) => {
 
 /**
  * GET /architect/payouts
- * List architect's payouts (PENDING + RELEASED)
+ * Get architect's payout summary (STEP 2.2)
+ * 
+ * Shows financial clarity without money movement:
+ * - totalEarnings: Sum of all purchases
+ * - totalPaidOut: Amount already paid (currently 0, future Stripe)
+ * - availableForPayout: earnings - paidOut
+ * 
+ * No payout execution yet - just transparency
  */
 router.get('/payouts', async (req, res) => {
   try {
-    const { state, page = 1, limit = 20 } = req.query;
+    const architectId = req.user.id;
 
-    // STEP 3: Placeholder response - Replace with DB query later
-    return ok(res, {
-      payouts: [],
-      summary: {
-        totalPending: 0,
-        totalReleased: 0,
-        totalEarnings: 0
+    // Fetch all purchases for this architect's designs
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        design: {
+          architectId: architectId,
+        },
       },
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: 0
-      }
+      select: {
+        price: true,
+        createdAt: true,
+      },
+    });
+
+    // Calculate totals
+    const totalEarnings = purchases.reduce(
+      (sum, purchase) => sum + Number(purchase.price),
+      0
+    );
+
+    // TODO: When Stripe Connect payout system is implemented:
+    // - Query actual payout records from Stripe
+    // - Calculate totalPaidOut from completed payouts
+    // - Subtract platform commission
+    const totalPaidOut = 0; // Future: sum of completed Stripe payouts
+    const availableForPayout = totalEarnings - totalPaidOut;
+
+    return ok(res, {
+      summary: {
+        totalEarnings,
+        totalPaidOut,
+        availableForPayout,
+        totalPending: availableForPayout, // Alias for compatibility
+        totalReleased: totalPaidOut, // Alias for compatibility
+      },
+      payouts: [], // Future: payout history from Stripe
+      message: totalEarnings === 0 
+        ? 'No earnings yet. Start selling designs to earn money!'
+        : totalPaidOut === 0
+        ? 'Earnings available. Stripe Connect integration coming soon.'
+        : null,
     });
   } catch (error) {
-    console.error('[Architect] List payouts error:', error);
+    console.error('[Architect] Get payouts error:', error);
     return serverError(res, 'Failed to fetch payouts');
   }
 });
