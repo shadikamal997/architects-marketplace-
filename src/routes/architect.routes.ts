@@ -344,10 +344,13 @@ router.post('/designs/:id/submit', async (req, res) => {
       return fail(res, 'Design must have at least one file before submission', 400);
     }
 
+    // Determine status based on AUTO_PUBLISH environment variable
+    const newStatus = process.env.AUTO_PUBLISH === 'true' ? 'PUBLISHED' : 'SUBMITTED';
+
     const design = await prisma.design.update({
       where: { id: designId },
       data: {
-        status: 'SUBMITTED',
+        status: newStatus,
       },
     });
 

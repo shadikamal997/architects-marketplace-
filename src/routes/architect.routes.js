@@ -642,7 +642,18 @@ router.post('/designs/:id/files', uploadFields, handleMulterError, async (req, r
       orderBy: { createdAt: 'desc' },
     });
 
-    // 8. Format response
+    // 8. Set first preview image as cover image if not already set
+    const firstPreviewImage = savedFiles.find(f => f.fileType === 'PREVIEW_IMAGE');
+    if (firstPreviewImage && !design.previewImageUrl) {
+      await prisma.design.update({
+        where: { id },
+        data: {
+          previewImageUrl: `/api/files/${firstPreviewImage.id}/download`,
+        },
+      });
+    }
+
+    // 9. Format response
     const formattedFiles = formatFileResponse(savedFiles);
 
     return ok(res, {

@@ -164,7 +164,7 @@ class PublicDesignsService {
             select: {
               id: true,
               fileType: true,
-              fileName: true,
+              originalFileName: true,
               fileSize: true,
               storageKey: true,
               displayOrder: true,
@@ -268,7 +268,7 @@ class PublicDesignsService {
           select: {
             id: true,
             fileType: true,
-            fileName: true,
+            originalFileName: true,
             fileSize: true,
             storageKey: true,
             displayOrder: true,

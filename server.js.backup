@@ -232,37 +232,19 @@ app.get('/marketplace/designs/slug/:slug', (req, res) => {
 // ============================================================================
 
 // Domain-specific routes
-app.use('/api/auth', authRoutes); // Authentication (email/password, Google, Apple)
-app.use('/api/architect', architectRoutes);
-app.use('/api/buyer', buyerRoutes);
+app.use('/auth', authRoutes); // Authentication (email/password, Google, Apple)
+app.use('/architect', architectRoutes);
+app.use('/buyer', buyerRoutes);
 app.use('/files', filesRoutes);
 app.use('/messages', messagesRoutes);
 app.use('/conversations', conversationsRoutes);
 app.use('/modifications', modificationsRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/admin', adminRoutes);
 app.use('/transactions', transactionsRoutes);
 app.use('/licenses', licensesRoutes);
 app.use('/reviews', reviewsRoutes);
 app.use('/purchases', purchaseRoutes); // Purchase & download management
-app.use('/api/marketplace', marketplaceRoutes); // Public marketplace browsing
-
-// Root endpoint - API info
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Architects Marketplace API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      auth: '/api/auth/*',
-      marketplace: '/api/marketplace/*',
-      architect: '/api/architect/*',
-      buyer: '/api/buyer/*',
-      admin: '/api/admin/*',
-      health: '/health'
-    },
-    timestamp: new Date().toISOString()
-  });
-});
+app.use('/marketplace', marketplaceRoutes); // Public marketplace browsing
 
 // Health check
 app.get('/health', (req, res) => {

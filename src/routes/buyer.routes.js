@@ -86,33 +86,141 @@ router.get('/overview', async (req, res) => {
 
 /**
  * POST /buyer/purchases
- * Create new purchase (initiate transaction)
- * Alias: POST /transactions
+ * Create new purchase (STEP 2)
+ * 
+ * Creates real purchase record for buyer to own design.
+ * 
+ * Security:
+ * - Buyer must be authenticated (requireAuth)
+ * - Design must be APPROVED (PUBLISHED)
+ * - No duplicate purchases allowed (STANDARD license)
+ * 
+ * Flow:
+ * 1. Validate design exists and is purchasable
+ * 2. Check for duplicate purchase
+ * 3. Create Purchase record
+ * 4. Architect earnings auto-update (via relation)
+ * 
+ * Note: Payment processing assumed complete (Stripe/mock)
  */
 router.post('/purchases', async (req, res) => {
   try {
-    const { designId, licenseType = 'STANDARD' } = req.body;
+    const { designId } = req.body;
+    const userId = req.user.id;
 
-    // STEP 3: Placeholder response - Replace with Stripe + DB logic later
-    return ok(res, {
-      transaction: {
-        id: `txn-${Date.now()}`,
-        designId: designId || null,
-        buyerId: req.user.id,
-        licenseType,
-        designPriceUsdCents: 5000,
-        totalAmountUsdCents: 5000,
-        state: 'PENDING',
-        paymentIntentId: null,
-        createdAt: new Date().toISOString()
+    // 1. Validate required fields
+    if (!designId) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        message: 'designId is required',
+      });
+    }
+
+    // 2. Fetch buyer record
+    const buyer = await prisma.buyer.findUnique({
+      where: { userId: userId },
+    });
+
+    if (!buyer) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Buyer profile not found',
+      });
+    }
+
+    // 3. Verify design exists and is purchasable
+    const design = await prisma.design.findUnique({
+      where: { id: designId },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        licenseType: true,
+        standardPrice: true,
+        exclusivePrice: true,
+        architectId: true,
       },
-      license: {
-        id: `lic-${Date.now()}`,
-        state: 'ACTIVE',
-        downloadCount: 0,
-        createdAt: new Date().toISOString()
-      }
+    });
+
+    if (!design) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Design not found',
+      });
+    }
+
+    // 4. Verify design is APPROVED (published/available)
+    if (design.status !== 'APPROVED') {
+      return res.status(400).json({
+        error: 'Not available',
+        message: 'Design is not available for purchase',
+        currentStatus: design.status,
+      });
+    }
+
+    // 5. Check for duplicate purchase (STANDARD license)
+    const existingPurchase = await prisma.purchase.findFirst({
+      where: {
+        buyerId: buyer.id,
+        designId: designId,
+      },
+    });
+
+    if (existingPurchase) {
+      return res.status(400).json({
+        error: 'Already purchased',
+        message: 'You have already purchased this design',
+        purchaseId: existingPurchase.id,
+      });
+    }
+
+    // 6. Determine price (standard license for now)
+    const pricePaid = Number(design.standardPrice);
+
+    if (pricePaid <= 0) {
+      return res.status(400).json({
+        error: 'Invalid price',
+        message: 'Design price is not set correctly',
+      });
+    }
+
+    // 7. Create purchase record
+    const purchase = await prisma.purchase.create({
+      data: {
+        buyerId: buyer.id,
+        designId: design.id,
+        price: pricePaid,
+        licenseType: 'STANDARD', // Future: support EXCLUSIVE
+        status: 'COMPLETED', // Payment assumed complete
+      },
+      include: {
+        design: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    // 8. Return success
+    return ok(res, {
+      success: true,
+      message: 'Purchase completed successfully',
+      purchase: {
+        id: purchase.id,
+        designId: purchase.design.id,
+        designTitle: purchase.design.title,
+        designSlug: purchase.design.slug,
+        pricePaid: Number(purchase.price),
+        licenseType: purchase.licenseType,
+        status: purchase.status,
+        createdAt: purchase.createdAt,
+      },
     }, 201);
+
   } catch (error) {
     console.error('[Buyer] Create purchase error:', error);
     return serverError(res, 'Failed to create purchase');
@@ -121,22 +229,87 @@ router.post('/purchases', async (req, res) => {
 
 /**
  * GET /buyer/purchases
- * List buyer's purchase history
- * Alias: GET /buyer/transactions
+ * List buyer's purchase history (STEP 2)
+ * 
+ * Returns real purchase records with design info.
+ * Used by buyer dashboard and purchase history page.
  */
 router.get('/purchases', async (req, res) => {
   try {
-    const { state, page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20 } = req.query;
+    const userId = req.user.id;
 
-    // STEP 3: Placeholder response - Replace with DB query later
-    return ok(res, {
-      transactions: [],
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: 0
-      }
+    const pageNum = parseInt(String(page));
+    const limitNum = parseInt(String(limit));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Fetch buyer record
+    const buyer = await prisma.buyer.findUnique({
+      where: { userId: userId },
     });
+
+    if (!buyer) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Buyer profile not found',
+      });
+    }
+
+    // Fetch purchases with design and architect info
+    const [purchases, total] = await Promise.all([
+      prisma.purchase.findMany({
+        where: { buyerId: buyer.id },
+        include: {
+          design: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              architect: {
+                select: {
+                  displayName: true,
+                  user: {
+                    select: {
+                      email: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum,
+      }),
+      prisma.purchase.count({
+        where: { buyerId: buyer.id },
+      }),
+    ]);
+
+    // Format response
+    const formattedPurchases = purchases.map(p => ({
+      id: p.id,
+      designId: p.design.id,
+      designTitle: p.design.title,
+      designSlug: p.design.slug,
+      architectName: p.design.architect.displayName || p.design.architect.user.email.split('@')[0],
+      pricePaid: Number(p.price),
+      licenseType: p.licenseType,
+      status: p.status,
+      createdAt: p.createdAt,
+    }));
+
+    return ok(res, {
+      purchases: formattedPurchases,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
+
   } catch (error) {
     console.error('[Buyer] List purchases error:', error);
     return serverError(res, 'Failed to fetch purchases');
