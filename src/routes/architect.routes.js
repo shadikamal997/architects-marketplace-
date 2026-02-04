@@ -940,20 +940,174 @@ router.post('/payouts/release', async (req, res) => {
 });
 
 /**
+ * GET /architect/account
+ * Get architect account settings (STEP 2.4)
+ * 
+ * Returns current account information for settings page
+ */
+router.get('/account', async (req, res) => {
+  try {
+    const architectId = req.user.id;
+
+    // Fetch architect profile with user data
+    const architect = await prisma.architect.findUnique({
+      where: { userId: architectId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!architect) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Architect profile not found',
+      });
+    }
+
+    return ok(res, {
+      architect: {
+        id: architect.user.id,
+        email: architect.user.email,
+        name: architect.user.name,
+        displayName: architect.displayName,
+        bio: architect.bio,
+        company: architect.company,
+        professionalTitle: architect.professionalTitle,
+        emailNotifications: architect.emailNotifications,
+      },
+    });
+
+  } catch (error) {
+    console.error('[Architect] Get account error:', error);
+    return serverError(res, 'Failed to fetch account settings');
+  }
+});
+
+/**
  * PUT /architect/account
- * Update architect account settings
+ * Update architect account settings (STEP 2.4)
+ * 
+ * Safe updates with optional fields only:
+ * - displayName: Architect public name
+ * - bio: Profile description
+ * - company: Company/firm name
+ * - website: Portfolio URL
+ * - location: City, country
+ * - emailNotifications: Boolean for email prefs
+ * 
+ * Security:
+ * - Only architect can update own account
+ * - Optional fields prevent data loss
+ * - No role/email changes allowed
  */
 router.put('/account', async (req, res) => {
   try {
+    const architectId = req.user.id;
     const updates = req.body;
 
-    // STEP 3: Placeholder response - Replace with DB update later
-    return ok(res, {
-      architect: {
-        id: req.user.id,
-        displayName: updates.displayName || 'Architect Name',
-        updatedAt: new Date().toISOString()
+    // Build safe update object (only include provided fields)
+    const architectUpdates = {};
+    const userUpdates = {};
+
+    // Architect model fields
+    if (updates.displayName !== undefined) {
+      architectUpdates.displayName = String(updates.displayName).trim();
+    }
+    if (updates.bio !== undefined) {
+      architectUpdates.bio = String(updates.bio).trim();
+    }
+    if (updates.company !== undefined) {
+      architectUpdates.company = String(updates.company).trim();
+    }
+
+    // User model fields
+    if (updates.name !== undefined) {
+      userUpdates.name = String(updates.name).trim();
+    }
+    if (updates.website !== undefined) {
+      userUpdates.website = String(updates.website).trim();
+    }
+    if (updates.location !== undefined) {
+      userUpdates.location = String(updates.location).trim();
+    }
+
+    // Notification preferences (JSON field)
+    if (updates.emailNotifications !== undefined) {
+      architectUpdates.emailNotifications = {
+        emailNotifications: Boolean(updates.emailNotifications),
+      };
+    }
+
+    // Fetch current architect record
+    const architect = await prisma.architect.findUnique({
+      where: { userId: architectId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!architect) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Architect profile not found',
+      });
+    }
+
+    // Update in transaction for safety
+    const updated = await prisma.$transaction(async (tx) => {
+      // Update User table if needed
+      if (Object.keys(userUpdates).length > 0) {
+        await tx.user.update({
+          where: { id: architectId },
+          data: userUpdates,
+        });
       }
+
+      // Update Architect table if needed
+      if (Object.keys(architectUpdates).length > 0) {
+        return tx.architect.update({
+          where: { userId: architectId },
+          data: architectUpdates,
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
+            },
+          },
+        });
+      }
+
+      return architect;
+    });
+
+    return ok(res, {
+      success: true,
+      message: 'Account settings updated successfully',
+      architect: {
+        id: updated.user.id,
+        email: updated.user.email,
+        name: updated.user.name,
+        displayName: updated.displayName,
+        bio: updated.bio,
+        company: updated.company,
+        emailNotifications: updated.emailNotifications,
+        updatedAt: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('[Architect] Update account error:', error);
