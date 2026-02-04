@@ -940,115 +940,6 @@ router.post('/payouts/release', async (req, res) => {
 });
 
 /**
- * GET /architect/performance
- * Get architect's performance analytics (STEP 2.3)
- * 
- * Returns real metrics from existing data:
- * - totalSales: Count of purchases across all designs
- * - totalReviews: Sum of review counts
- * - averageRating: Average rating across all designs
- * - designs: Performance breakdown per design
- * 
- * Future metrics (currently 0):
- * - totalViews: Requires view tracking implementation
- * - conversionRate: Calculated when view tracking exists
- */
-router.get('/performance', async (req, res) => {
-  try {
-    const architectId = req.user.id;
-
-    // Fetch all designs with purchase and review counts
-    const designs = await prisma.design.findMany({
-      where: {
-        architectId: architectId,
-      },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        averageRating: true,
-        reviewCount: true,
-        publishedAt: true,
-        _count: {
-          select: {
-            purchases: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    // Calculate aggregate metrics
-    const totalSales = designs.reduce(
-      (sum, design) => sum + design._count.purchases,
-      0
-    );
-
-    const totalReviews = designs.reduce(
-      (sum, design) => sum + design.reviewCount,
-      0
-    );
-
-    // Calculate overall average rating (weighted by review count)
-    let totalRatingPoints = 0;
-    designs.forEach(design => {
-      totalRatingPoints += design.averageRating * design.reviewCount;
-    });
-    const overallAverageRating = totalReviews > 0
-      ? Number((totalRatingPoints / totalReviews).toFixed(2))
-      : 0;
-
-    // Format design performance list
-    const designPerformance = designs.map(d => ({
-      id: d.id,
-      title: d.title,
-      slug: d.slug,
-      views: 0, // TODO: Implement view tracking
-      downloads: d._count.purchases, // Alias for sales
-      sales: d._count.purchases,
-      rating: Number(d.averageRating.toFixed(2)),
-      reviews: d.reviewCount,
-      publishedAt: d.publishedAt,
-    }));
-
-    // Find top performing design by sales
-    const topDesign = designs.length > 0
-      ? designs.reduce((top, current) =>
-          current._count.purchases > (top._count?.purchases || 0) ? current : top
-        )
-      : null;
-
-    return ok(res, {
-      metrics: {
-        totalViews: 0, // TODO: Implement view tracking system
-        totalDownloads: totalSales, // Alias for sales
-        totalSales,
-        averageRating: overallAverageRating,
-        totalReviews,
-        conversionRate: 0, // TODO: Calculate when view tracking exists
-        topPerformingDesign: topDesign ? {
-          id: topDesign.id,
-          title: topDesign.title,
-          views: 0, // TODO: View tracking
-          sales: topDesign._count.purchases,
-        } : null,
-      },
-      designs: designPerformance,
-      message: designs.length === 0
-        ? 'No designs yet. Create and publish designs to track performance.'
-        : totalSales === 0
-        ? 'Designs published but no sales yet. Keep promoting!'
-        : null,
-    });
-  } catch (error) {
-    console.error('[Architect] Get performance error:', error);
-    return serverError(res, 'Failed to fetch performance');
-  }
-});
-
-/**
  * PUT /architect/account
  * Update architect account settings
  */
@@ -1169,6 +1060,119 @@ router.get('/reviews', async (req, res) => {
   } catch (error) {
     console.error('[Architect] Get reviews error:', error);
     return serverError(res, 'Failed to fetch reviews');
+  }
+});
+
+/**
+ * GET /architect/performance
+ * Get architect's performance analytics (STEP 2.3)
+ * 
+ * Returns real metrics from existing data:
+ * - totalViews: 0 (honest - not tracking yet)
+ * - totalSales: Count of purchases across all designs
+ * - conversionRate: 0 (needs views to calculate)
+ * - totalReviews: Count of reviews
+ * - averageRating: Average rating across all designs
+ * - designs: Performance data per design
+ * 
+ * No mock data - only real numbers
+ */
+router.get('/performance', async (req, res) => {
+  try {
+    const architectId = req.user.id;
+
+    // Fetch all designs with purchase and review counts
+    const designs = await prisma.design.findMany({
+      where: {
+        architectId: architectId,
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        averageRating: true,
+        reviewCount: true,
+        publishedAt: true,
+        _count: {
+          select: {
+            purchases: true,
+          },
+        },
+      },
+      orderBy: {
+        publishedAt: 'desc',
+      },
+    });
+
+    // Calculate totals
+    let totalSales = 0;
+    let totalReviews = 0;
+    let totalRatingSum = 0;
+    let designsWithRatings = 0;
+
+    const designsPerformance = designs.map(design => {
+      const sales = design._count.purchases;
+      const reviews = design.reviewCount;
+      const rating = design.averageRating;
+
+      totalSales += sales;
+      totalReviews += reviews;
+      
+      if (reviews > 0) {
+        totalRatingSum += rating;
+        designsWithRatings++;
+      }
+
+      return {
+        id: design.id,
+        title: design.title,
+        slug: design.slug,
+        status: design.status,
+        views: 0, // TODO: Implement view tracking
+        downloads: sales, // Alias for sales (purchases = downloads)
+        sales: sales,
+        rating: rating,
+        reviews: reviews,
+        publishedAt: design.publishedAt,
+      };
+    });
+
+    // Calculate overall average rating
+    const averageRating = designsWithRatings > 0
+      ? Number((totalRatingSum / designsWithRatings).toFixed(2))
+      : 0;
+
+    // Find top performing design (by sales)
+    const topDesign = designsPerformance.reduce((top, design) => {
+      return (!top || design.sales > top.sales) ? design : top;
+    }, null);
+
+    return ok(res, {
+      metrics: {
+        totalViews: 0, // Honest: not tracking yet
+        totalDownloads: totalSales, // Downloads = purchases
+        averageRating: averageRating,
+        totalReviews: totalReviews,
+        conversionRate: 0, // Cannot calculate without views
+        topPerformingDesign: topDesign ? {
+          id: topDesign.id,
+          title: topDesign.title,
+          views: topDesign.views,
+          sales: topDesign.sales,
+        } : null,
+      },
+      designs: designsPerformance,
+      message: designs.length === 0
+        ? 'Create and publish designs to start tracking performance.'
+        : totalSales === 0
+        ? 'No sales yet. Keep promoting your designs!'
+        : null,
+    });
+
+  } catch (error) {
+    console.error('[Architect] Get performance error:', error);
+    return serverError(res, 'Failed to fetch performance data');
   }
 });
 
