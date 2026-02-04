@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 // Import route modules
-const architectRoutes = require('./dist/routes/architect.routes');
+const architectRoutes = require('./src/routes/architect.routes');
 const buyerRoutes = require('./src/routes/buyer.routes');
 const filesRoutes = require('./src/routes/files.routes');
 const messagesRoutes = require('./src/routes/messages.routes');

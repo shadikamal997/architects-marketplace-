@@ -3,6 +3,16 @@
  */
 
 /**
+ * File type enum mapping (DB-safe constants)
+ * Prevents enum mismatch crashes
+ */
+const FILE_TYPE_MAP = {
+  mainPackage: 'MAIN_PACKAGE',
+  images: 'PREVIEW_IMAGE',
+  assets3d: 'THREE_D_ASSET',
+};
+
+/**
  * Validate uploaded files against requirements
  * @param {Object} files - Multer files object
  * @returns {Object} - Validation result { valid: boolean, errors: string[] }
@@ -39,13 +49,13 @@ const mapFilesToRecords = (designId, architectId, files) => {
   const records = [];
   let imageOrder = 0;
 
-  // Map main package
+  // Map main package (using enum-safe constants)
   if (files.mainPackage) {
     files.mainPackage.forEach((file) => {
       records.push({
         designId,
         uploadedByArchitectId: architectId,
-        fileType: 'MAIN_PACKAGE',
+        fileType: FILE_TYPE_MAP.mainPackage,
         originalFileName: file.originalname,
         storageKey: file.path, // Local path (will be S3 key later)
         fileSize: file.size,
@@ -56,13 +66,13 @@ const mapFilesToRecords = (designId, architectId, files) => {
     });
   }
 
-  // Map preview images (with display order)
+  // Map preview images (with display order, using enum-safe constants)
   if (files.images) {
     files.images.forEach((file) => {
       records.push({
         designId,
         uploadedByArchitectId: architectId,
-        fileType: 'PREVIEW_IMAGE',
+        fileType: FILE_TYPE_MAP.images,
         originalFileName: file.originalname,
         storageKey: file.path,
         fileSize: file.size,
@@ -73,13 +83,13 @@ const mapFilesToRecords = (designId, architectId, files) => {
     });
   }
 
-  // Map 3D assets
+  // Map 3D assets (using enum-safe constants)
   if (files.assets3d) {
     files.assets3d.forEach((file) => {
       records.push({
         designId,
         uploadedByArchitectId: architectId,
-        fileType: 'THREE_D_ASSET',
+        fileType: FILE_TYPE_MAP.assets3d,
         originalFileName: file.originalname,
         storageKey: file.path,
         fileSize: file.size,
@@ -127,4 +137,5 @@ module.exports = {
   mapFilesToRecords,
   formatFileResponse,
   getFileTypeFromField,
+  FILE_TYPE_MAP,
 };

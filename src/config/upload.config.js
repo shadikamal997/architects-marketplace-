@@ -177,10 +177,45 @@ const deleteDesignFiles = async (designId) => {
   }
 };
 
+/**
+ * Multer error handler middleware
+ * Converts Multer crashes (500) into controlled errors (400)
+ * 
+ * Handles:
+ * - File too large (LIMIT_FILE_SIZE)
+ * - Too many files (LIMIT_FILE_COUNT)
+ * - Too many fields (LIMIT_FIELD_COUNT)
+ * - Unexpected field (LIMIT_UNEXPECTED_FILE)
+ * - Part too large (LIMIT_PART_COUNT)
+ */
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    // Multer-specific errors → 400 (Bad Request)
+    const errorMessages = {
+      LIMIT_FILE_SIZE: 'File too large. Check individual file limits.',
+      LIMIT_FILE_COUNT: 'Too many files uploaded.',
+      LIMIT_FIELD_COUNT: 'Too many form fields.',
+      LIMIT_UNEXPECTED_FILE: `Unexpected file field. Only 'mainPackage', 'images', and 'assets3d' are allowed.`,
+      LIMIT_PART_COUNT: 'Too many parts in multipart form.',
+    };
+
+    return res.status(400).json({
+      error: 'Upload validation failed',
+      message: errorMessages[err.code] || err.message,
+      code: err.code,
+      field: err.field,
+    });
+  }
+
+  // Not a Multer error, pass to next error handler
+  next(err);
+};
+
 module.exports = {
   uploadFields,
   uploadConfig,
   validateFileSize,
   deleteDesignFiles,
+  handleMulterError,
   FILE_TYPES,
 };

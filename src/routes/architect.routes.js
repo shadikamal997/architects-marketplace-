@@ -2,7 +2,7 @@ const express = require('express');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { ok, serverError } = require('../utils/response');
 const { prisma } = require('../lib/prisma.ts');
-const { uploadFields, validateFileSize } = require('../config/upload.config');
+const { uploadFields, validateFileSize, handleMulterError } = require('../config/upload.config');
 const {
   validateDesignFiles,
   mapFilesToRecords,
@@ -536,11 +536,24 @@ router.post('/designs/:id/submit', async (req, res) => {
  * - images: Required, min 3, max 10, JPG/PNG/WEBP, max 10MB each
  * - assets3d: Optional, max 10, SKP/FBX/OBJ/GLB, max 100MB each
  */
-router.post('/designs/:id/files', uploadFields, async (req, res) => {
+router.post('/designs/:id/files', uploadFields, handleMulterError, async (req, res) => {
+  console.log('[UPLOAD] START', {
+    designId: req.params.id,
+    userId: req.user?.id,
+    filesReceived: req.files ? Object.keys(req.files) : [],
+  });
+  console.log('[UPLOAD] fields received:', Object.keys(req.files || {}));
+
   try {
     const { id } = req.params;
     const architectId = req.user.id;
     const files = req.files || {};
+
+    console.log('[UPLOAD] Files breakdown', {
+      mainPackage: files.mainPackage?.length || 0,
+      images: files.images?.length || 0,
+      assets3d: files.assets3d?.length || 0,
+    });
 
     // 1. Verify design exists and architect is owner
     const design = await prisma.design.findFirst({
@@ -551,6 +564,7 @@ router.post('/designs/:id/files', uploadFields, async (req, res) => {
     });
 
     if (!design) {
+      console.error('[UPLOAD ERROR] Design not found', { id, architectId });
       return res.status(403).json({
         error: 'Access denied',
         message: 'Design not found or you do not have permission to upload files',
@@ -597,9 +611,29 @@ router.post('/designs/:id/files', uploadFields, async (req, res) => {
     // 5. Map files to DesignFile records
     const fileRecords = mapFilesToRecords(id, architectId, files);
 
-    // 6. Save to database
-    await prisma.designFile.createMany({
-      data: fileRecords,
+    // 6. DB-SIDE SAFETY GUARDS
+    
+    // 6a. Guard against empty record sets (prevents obscure Prisma errors)
+    if (!fileRecords || fileRecords.length === 0) {
+      return res.status(400).json({
+        error: 'No valid files',
+        message: 'No valid files to save',
+      });
+    }
+
+    // 6b. Final ownership verification (prevents cross-user contamination)
+    if (design.architectId !== architectId) {
+      return res.status(403).json({
+        error: 'Ownership violation',
+        message: 'Invalid design ownership',
+      });
+    }
+
+    // 6c. Save to database with transaction safety
+    await prisma.$transaction(async (tx) => {
+      await tx.designFile.createMany({
+        data: fileRecords,
+      });
     });
 
     // 7. Fetch created records for response
@@ -619,7 +653,12 @@ router.post('/designs/:id/files', uploadFields, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[Architect] Upload files error:', error);
+    console.error('[UPLOAD ERROR] Full error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
     return serverError(res, 'Failed to upload files');
   }
 });
