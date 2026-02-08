@@ -40,9 +40,12 @@ router.post('/designs', async (req, res) => {
     const architectId = req.user.id;
     const data = req.body;
 
+    console.log('[CREATE DESIGN] Received data:', JSON.stringify(data, null, 2));
+
     // 1. Validate input data
     const validation = validateCreateDesign(data);
     if (!validation.valid) {
+      console.log('[CREATE DESIGN] Validation failed:', validation.errors);
       return res.status(400).json({
         error: 'Validation failed',
         message: 'Invalid design data',
@@ -493,27 +496,36 @@ router.post('/designs/:id/submit', async (req, res) => {
       });
     }
 
-    // 5. Update design status to SUBMITTED
+    // 5. Update design status - check AUTO_PUBLISH setting
+    const autoPublish = process.env.AUTO_PUBLISH === 'true';
+    const newStatus = autoPublish ? 'PUBLISHED' : 'SUBMITTED';
+    
     const updated = await prisma.design.update({
       where: { id },
       data: {
-        status: 'SUBMITTED',
+        status: newStatus,
         submittedAt: new Date(),
+        ...(autoPublish && { publishedAt: new Date() }),
         codeDisclaimer: true,
       },
     });
+
+    const message = autoPublish 
+      ? 'Design published successfully and is now live in the marketplace'
+      : 'Design submitted successfully for admin review';
 
     // 6. TODO: Send notification to admins (future)
     // await notifyAdmins('NEW_SUBMISSION', { designId: id, architectId });
 
     return ok(res, {
       success: true,
-      message: 'Design submitted successfully for admin review',
+      message,
       design: {
         id: updated.id,
         title: updated.title,
         status: updated.status,
         submittedAt: updated.submittedAt,
+        ...(autoPublish && { publishedAt: updated.publishedAt }),
       },
     });
 

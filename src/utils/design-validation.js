@@ -18,13 +18,13 @@ const VALID_ENUMS = {
 const validateCreateDesign = (data) => {
   const errors = [];
 
-  // Required fields
-  if (!data.title || typeof data.title !== 'string' || data.title.trim().length < 3) {
-    errors.push('Title is required (minimum 3 characters)');
+  // Required fields - more lenient for draft creation
+  if (!data.title || typeof data.title !== 'string' || data.title.trim().length < 1) {
+    errors.push('Title is required');
   }
 
-  if (!data.shortSummary || typeof data.shortSummary !== 'string' || data.shortSummary.trim().length < 10) {
-    errors.push('Short summary is required (minimum 10 characters)');
+  if (!data.shortSummary || typeof data.shortSummary !== 'string' || data.shortSummary.trim().length < 1) {
+    errors.push('Short summary is required');
   }
 
   if (!data.category || typeof data.category !== 'string') {

@@ -383,13 +383,13 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Register routes
-app.use('/auth', authRoutes);
-app.use('/marketplace', marketplaceRoutes);
-app.use('/architect', architectRoutes);
-app.use('/admin', adminRoutes);
-app.use('/buyer', buyerRoutes);
-app.use('/search', searchRoutes);
-app.use('/designs', filesRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/architect', architectRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/buyer', buyerRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/designs', filesRoutes);
 app.use("/api/modifications", modificationRoutes);
 
 // JWT Secret from environment variable - STRICT VALIDATION

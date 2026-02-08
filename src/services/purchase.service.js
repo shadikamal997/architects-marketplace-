@@ -4,7 +4,7 @@
  * Handles design purchase logic, license enforcement, and secure downloads.
  * 
  * Core Rules:
- * 1. Only APPROVED designs can be purchased
+ * 1. Only APPROVED or PUBLISHED designs can be purchased
  * 2. Buyer must be authenticated
  * 3. EXCLUSIVE licenses can only be sold once
  * 4. Purchase records are immutable (no updates)
@@ -26,7 +26,7 @@ class PurchaseService {
    * @param {string} designId - Design UUID
    * @returns {Promise<Purchase>} Created purchase record
    * 
-   * @throws {Error} If design not APPROVED
+   * @throws {Error} If design not APPROVED or PUBLISHED
    * @throws {Error} If design already sold exclusively
    * @throws {Error} If buyer already purchased design
    */
@@ -44,13 +44,15 @@ class PurchaseService {
       },
     });
 
-    // 2. Validate design exists and is APPROVED
+    // 2. Validate design exists and is APPROVED or PUBLISHED
     if (!design) {
       throw new Error('Design not found');
     }
 
-    if (design.status !== 'APPROVED') {
-      throw new Error('Design not available for purchase. Only approved designs can be purchased.');
+    // Allow purchases for both APPROVED and PUBLISHED designs
+    // (PUBLISHED is used when AUTO_PUBLISH=true)
+    if (!['APPROVED', 'PUBLISHED'].includes(design.status)) {
+      throw new Error('Design not available for purchase. Only approved/published designs can be purchased.');
     }
 
     // 3. EXCLUSIVE LICENSE ENFORCEMENT
@@ -395,7 +397,9 @@ class PurchaseService {
       return { available: false, reason: 'Design not found' };
     }
 
-    if (design.status !== 'APPROVED') {
+    // Allow purchases for both APPROVED and PUBLISHED designs
+    // (PUBLISHED is used when AUTO_PUBLISH=true)
+    if (!['APPROVED', 'PUBLISHED'].includes(design.status)) {
       return { available: false, reason: 'Design not approved for sale' };
     }
 

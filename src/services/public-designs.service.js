@@ -41,9 +41,9 @@ class PublicDesignsService {
     const limitNum = Math.min(parseInt(limit), 100);
     const skip = (pageNum - 1) * limitNum;
 
-    // Build where clause - ONLY APPROVED designs
+    // Build where clause - ONLY PUBLISHED designs
     const where = {
-      status: 'APPROVED',
+      status: 'PUBLISHED',
     };
 
     // Category filter
